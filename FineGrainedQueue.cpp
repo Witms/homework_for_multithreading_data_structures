@@ -1,6 +1,6 @@
 #include "FineGrainedQueue.h"
 
-std::mutex* bc;
+
 
 Node::Node(int v, Node* n) : value(v), next(n)
 {
@@ -22,7 +22,7 @@ FineGrainedQueue::~FineGrainedQueue()
 {
     Node* cur = this->head, *next = this->head->next;
     delete this->queue_mutex;
-    bc = cur->node_mutex;
+    
     while (next)
     {
         delete cur;
@@ -36,34 +36,36 @@ FineGrainedQueue::~FineGrainedQueue()
 void FineGrainedQueue::insertIntoMiddle(int value, int pos)
 {
     Node* prev, * cur;
-    queue_mutex->lock();
-
-    
+    queue_mutex->lock();    
 
     prev = this->head;
-    cur = this->head->next;
-
     prev->node_mutex->lock();
-    
+
     queue_mutex->unlock();
 
+    cur = this->head->next;
+    if (cur != nullptr)
+        cur->node_mutex->lock();
 
-    for(int i = 1; i <= pos && cur != nullptr; ++i)
+
+    for(int i = 1; cur != nullptr &&  i <= pos; ++i)
     {
         if (i == pos)
         {
             Node* newNode = new Node{ value, cur };
             prev->next = newNode;
             prev->node_mutex->unlock();
+            cur->node_mutex->unlock();
             return;
         }
-        if (cur) 
-        {
-            cur->node_mutex->lock();
-            prev->node_mutex->unlock();
+        
+            Node* oldNode = prev;
             prev = cur;
-            cur = prev->next;
-        }
+            cur = cur->next;
+            if (cur != nullptr)
+                cur->node_mutex->lock();
+            oldNode->node_mutex->unlock();
+        
     }
 
     Node* newNode = new Node{ value, cur };
